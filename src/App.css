@@ -247,3 +247,102 @@ header p {
   border-radius: 12px;
   display: inline-block;
 }
+.event-card-img {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 16px;
+  margin-bottom: 0.75rem;
+}
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.modal-img {
+  width: 100%;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.modal-vibe {
+  font-weight: bold;
+  color: #666;
+}
+.event-description {
+  font-size: 0.9em;
+  color: #555;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.detail-page {
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 24px;
+}
+
+.back-btn {
+  background: none;
+  border: none;
+  font-size: 1em;
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+
+.detail-img {
+  width: 100%;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  padding: 6px;
+  background: linear-gradient(45deg, #ff0000, #ff8c00, #ffee00, #00ff00, #00bfff, #8a2be2, #ff00ff);
+  background-size: 300% 300%;
+  animation: rainbow-spin 6s ease infinite;
+  box-sizing: border-box;
+  transition: transform 0.3s ease;
+}
+
+.detail-img:hover {
+  transform: rotate(-1deg) scale(1.02);
+}
+
+@keyframes rainbow-spin {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.detail-vibe {
+  font-weight: bold;
+  color: #666;
+}

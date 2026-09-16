@@ -1,6 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 import "./App.css";
+
+const vibeImages = {
+  Chill: "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?w=800&q=80",
+  Social: "https://images.unsplash.com/photo-1543007630-9710e4a00a20?w=800&q=80",
+  Artsy: "https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=800&q=80",
+  Active: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&q=80",
+};
+
 const initialEvents = [
   { id: 1, title: "Rooftop Sunset Chill", venue: "Skyline Lounge", event_date: "2026-09-05", vibe: "Chill", description: "" },
   { id: 2, title: "Downtown Block Party", venue: "5th Ave", event_date: "2026-09-06", vibe: "Social", description: "" },
@@ -12,7 +20,7 @@ function App() {
   const [showForm, setShowForm] = useState(false);
   const [events, setEvents] = useState(initialEvents);
   const [deleteError, setDeleteError] = useState(null);
-
+  const [imageFile, setImageFile] = useState(null);
   const [title, setTitle] = useState("");
   const [venue, setVenue] = useState("");
   const [eventDate, setEventDate] = useState("");
@@ -21,10 +29,18 @@ function App() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
   const [editingId, setEditingId] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   const filteredEvents = selectedVibe === "All"
     ? events
     : events.filter((event) => event.vibe === selectedVibe);
+
+  useEffect(() => {
+    fetch("http://127.0.0.1:8001/events")
+      .then((res) => res.json())
+      .then((data) => setEvents(data))
+      .catch((err) => console.error("Failed to load events:", err));
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,11 +53,47 @@ function App() {
     setSaving(true);
     setFormError(null);
 
-    const { data, error } = await supabase
-      .from("events")
-      .insert({ title, venue, event_date: eventDate, vibe, description })
-      .select()
-      .single();
+    let imageUrl = null;
+
+    if (imageFile) {
+      const fileName = `${Date.now()}-${imageFile.name}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("event-images")
+        .upload(fileName, imageFile);
+
+      if (uploadError) {
+        setSaving(false);
+        setFormError("Could not upload image. Please try again.");
+        return;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from("event-images")
+        .getPublicUrl(fileName);
+
+      imageUrl = publicUrlData.publicUrl;
+    }
+
+    let data, error;
+
+    if (editingId) {
+      const updatePayload = { title, venue, event_date: eventDate, vibe, description };
+      if (imageUrl) updatePayload.image_url = imageUrl;
+
+      ({ data, error } = await supabase
+        .from("events")
+        .update(updatePayload)
+        .eq("id", editingId)
+        .select()
+        .single());
+    } else {
+      ({ data, error } = await supabase
+        .from("events")
+        .insert({ title, venue, event_date: eventDate, vibe, description, image_url: imageUrl })
+        .select()
+        .single());
+    }
 
     setSaving(false);
 
@@ -50,13 +102,20 @@ function App() {
       return;
     }
 
-    setEvents((prev) => [...prev, data]);
+    if (editingId) {
+      setEvents((prev) => prev.map((ev) => (ev.id === editingId ? data : ev)));
+    } else {
+      setEvents((prev) => [...prev, data]);
+    }
+
     setShowForm(false);
+    setEditingId(null);
     setTitle("");
     setVenue("");
     setEventDate("");
     setVibe("Chill");
     setDescription("");
+    setImageFile(null);
   };
 
   const handleDelete = async (id) => {
@@ -78,6 +137,25 @@ function App() {
     setEvents((prev) => prev.filter((event) => event.id !== id));
   };
 
+  if (selectedEvent) {
+    return (
+      <div className="app">
+        <div className="detail-page">
+          <button className="back-btn" onClick={() => setSelectedEvent(null)}>← Back</button>
+          <img
+            src={selectedEvent.image_url || vibeImages[selectedEvent.vibe] || vibeImages.Chill}
+            alt={selectedEvent.title}
+            className="detail-img"
+          />
+          <h2>{selectedEvent.title}</h2>
+          <p><strong>{selectedEvent.venue}</strong> · {selectedEvent.event_date}</p>
+          <p className="detail-vibe">{selectedEvent.vibe}</p>
+          <p>{selectedEvent.description || "No description provided."}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <header>
@@ -90,6 +168,7 @@ function App() {
           setEventDate("");
           setVibe("Chill");
           setDescription("");
+          setImageFile(null);
           setShowForm(true);
         }}>+ Add Event</button>
       </header>
@@ -107,6 +186,11 @@ function App() {
               <option value="Active">Active</option>
             </select>
             <textarea placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setImageFile(e.target.files[0])}
+            />
             {formError && <p className="form-error">{formError}</p>}
             <button type="submit" disabled={saving}>{saving ? "Saving..." : "Save Event"}</button>
             <button type="button" onClick={() => setShowForm(false)}>Cancel</button>
@@ -126,10 +210,16 @@ function App() {
 
       <div className="event-list">
         {filteredEvents.map((event) => (
-          <div className="event-card" key={event.id}>
+          <div className="event-card" key={event.id} onClick={() => setSelectedEvent(event)}>
+            <img
+              src={event.image_url || vibeImages[event.vibe] || vibeImages.Chill}
+              alt={event.title}
+              className="event-card-img"
+            />
             <h3>{event.title}</h3>
             <p>{event.vibe} · {event.event_date}</p>
-            <button onClick={() => {
+            <button onClick={(e) => {
+              e.stopPropagation();
               setEditingId(event.id);
               setTitle(event.title);
               setVenue(event.venue);
@@ -138,7 +228,10 @@ function App() {
               setDescription(event.description);
               setShowForm(true);
             }}>Edit</button>
-            <button onClick={() => handleDelete(event.id)}>Delete</button>
+            <button onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(event.id);
+            }}>Delete</button>
           </div>
         ))}
       </div>
