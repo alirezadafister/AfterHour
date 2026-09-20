@@ -36,7 +36,7 @@ function App() {
     : events.filter((event) => event.vibe === selectedVibe);
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8001/events")
+    fetch("https://afterhours-backend-d7mu.onrender.com/events")
       .then((res) => res.json())
       .then((data) => setEvents(data))
       .catch((err) => console.error("Failed to load events:", err));
